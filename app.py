@@ -103,13 +103,10 @@ def download_and_load_rag(gdrive_value: str):
     if not file_id:
         raise ValueError("Google Drive file ID or share URL is required.")
 
-    url = f"https://drive.google.com/uc?id={file_id}"
-
     gdown.download(
-        url=url,
+        id=file_id,
         output=LOCAL_RAG_CACHE,
         quiet=True,
-        fuzzy=True,
     )
 
     rag = pd.read_csv(LOCAL_RAG_CACHE)
@@ -126,6 +123,7 @@ def download_and_load_rag(gdrive_value: str):
     }
 
     missing = required - set(rag.columns)
+
     if missing:
         raise ValueError(f"RAG file is missing columns: {sorted(missing)}")
 
@@ -172,32 +170,64 @@ def filter_corpus(df, project, doc_type, archetype, topic, archetypes_df):
             archetypes_df["archetype"] == archetype,
             "project_id",
         ].tolist()
+
         out = out[out["project_id"].isin(project_ids)]
 
     topic_map = {
         "Physical Infrastructure": [
-            "facility", "facilities", "hospital", "clinic", "laboratory",
-            "construction", "rehabilitation", "renovation",
-            "retrofit", "upgrade", "rebuild",
+            "facility",
+            "facilities",
+            "hospital",
+            "clinic",
+            "laboratory",
+            "construction",
+            "rehabilitation",
+            "renovation",
+            "retrofit",
+            "upgrade",
+            "rebuild",
         ],
         "DRM / Facility Resilience": [
-            "resilience", "resilient", "disaster risk management",
-            "withstand", "recover", "shock",
+            "resilience",
+            "resilient",
+            "disaster risk management",
+            "withstand",
+            "recover",
+            "shock",
         ],
         "Health-System Resilience": [
-            "health system", "preparedness", "capacity building",
-            "response capacity", "maintain core functions",
+            "health system",
+            "preparedness",
+            "capacity building",
+            "response capacity",
+            "maintain core functions",
         ],
         "Hazard Specificity": [
-            "flood", "cyclone", "hurricane", "typhoon", "earthquake",
-            "drought", "heat", "landslide", "tsunami", "storm surge",
+            "flood",
+            "cyclone",
+            "hurricane",
+            "typhoon",
+            "earthquake",
+            "drought",
+            "heat",
+            "landslide",
+            "tsunami",
+            "storm surge",
         ],
         "Climate Adaptation": [
-            "climate", "temperature", "precipitation", "sea level",
+            "climate",
+            "temperature",
+            "precipitation",
+            "sea level",
         ],
         "Lifelines / Utilities": [
-            "water", "sanitation", "electricity", "solar",
-            "generator", "drainage", "power",
+            "water",
+            "sanitation",
+            "electricity",
+            "solar",
+            "generator",
+            "drainage",
+            "power",
         ],
     }
 
@@ -296,7 +326,8 @@ def ask_anthropic(api_key, model, query, results, archetypes):
         archetypes,
     )
 
-    system_prompt = """You are an analytical assistant for a World Bank health infrastructure capstone project.
+    system_prompt = """
+You are an analytical assistant for a World Bank health infrastructure capstone project.
 
 Use only the retrieved PAD/ICR evidence and supplied project metadata.
 
@@ -309,7 +340,8 @@ Rules:
 - Keep the response concise, analytical, and sponsor-facing.
 """
 
-    user_prompt = f"""QUESTION
+    user_prompt = f"""
+QUESTION
 {query}
 
 PROJECT ARCHETYPE METADATA
@@ -330,7 +362,10 @@ Provide:
         temperature=0.1,
         system=system_prompt,
         messages=[
-            {"role": "user", "content": user_prompt}
+            {
+                "role": "user",
+                "content": user_prompt,
+            }
         ],
     )
 
@@ -351,8 +386,12 @@ st.sidebar.caption("World Bank Capstone II")
 st.sidebar.markdown("### Data")
 
 default_drive_value = ""
+
 try:
-    default_drive_value = st.secrets.get("RAG_GDRIVE_FILE_ID", "")
+    default_drive_value = st.secrets.get(
+        "RAG_GDRIVE_FILE_ID",
+        "",
+    )
 except Exception:
     pass
 
@@ -372,7 +411,10 @@ api_key = st.sidebar.text_input(
     "Anthropic API key",
     type="password",
     placeholder="sk-ant-...",
-    help="Used only for this browser/app session unless you configure Streamlit secrets.",
+    help=(
+        "Used only for this browser/app session unless "
+        "you configure Streamlit secrets."
+    ),
 )
 
 model = st.sidebar.selectbox(
@@ -391,27 +433,41 @@ model = st.sidebar.selectbox(
 
 try:
     archetypes = load_archetypes()
+
 except Exception as exc:
     st.error(f"Could not load archetype data: {exc}")
     st.stop()
 
+
 if not gdrive_value:
-    st.title("World Bank Health Infrastructure Portfolio Explorer")
+    st.title(
+        "World Bank Health Infrastructure Portfolio Explorer"
+    )
+
     st.info(
         "Enter the Google Drive file ID or share URL for "
         "`world_bank_rag_serving.csv` in the sidebar."
     )
+
     st.stop()
 
+
 try:
-    with st.spinner("Loading RAG corpus from Google Drive..."):
-        rag = download_and_load_rag(gdrive_value)
+    with st.spinner(
+        "Loading RAG corpus from Google Drive..."
+    ):
+        rag = download_and_load_rag(
+            gdrive_value
+        )
+
 except Exception as exc:
     st.error(
         "Could not load the RAG corpus from Google Drive.\n\n"
         f"Error: {exc}\n\n"
-        "Check that the file ID/share URL is correct and that the file is accessible."
+        "Check that the file ID/share URL is correct "
+        "and that the file is accessible."
     )
+
     st.stop()
 
 
@@ -424,18 +480,32 @@ st.sidebar.markdown("### Filters")
 project = st.sidebar.selectbox(
     "Project",
     ["All projects"]
-    + sorted(rag["project_id"].dropna().unique().tolist()),
+    + sorted(
+        rag["project_id"]
+        .dropna()
+        .unique()
+        .tolist()
+    ),
 )
 
 doc_type = st.sidebar.selectbox(
     "Document type",
-    ["PAD + ICR", "PAD only", "ICR only"],
+    [
+        "PAD + ICR",
+        "PAD only",
+        "ICR only",
+    ],
 )
 
 archetype = st.sidebar.selectbox(
     "Project archetype",
     ["All archetypes"]
-    + sorted(archetypes["archetype"].dropna().unique().tolist()),
+    + sorted(
+        archetypes["archetype"]
+        .dropna()
+        .unique()
+        .tolist()
+    ),
 )
 
 topic = st.sidebar.selectbox(
@@ -459,6 +529,7 @@ top_k = st.sidebar.slider(
 )
 
 st.sidebar.divider()
+
 st.sidebar.caption(
     f"{rag['project_id'].nunique()} projects • "
     f"{rag['document_id'].nunique()} documents • "
@@ -470,40 +541,78 @@ st.sidebar.caption(
 # Main UI
 # ------------------------------------------------------------
 
-st.title("World Bank Health Infrastructure Portfolio Explorer")
+st.title(
+    "World Bank Health Infrastructure Portfolio Explorer"
+)
+
 st.caption(
     "Sponsor-guided portfolio analysis with traceable PAD/ICR evidence"
 )
 
 m1, m2, m3, m4 = st.columns(4)
-m1.metric("Projects", rag["project_id"].nunique())
-m2.metric("PAD / ICR Documents", rag["document_id"].nunique())
-m3.metric("RAG Chunks", f"{len(rag):,}")
-m4.metric("Project Archetypes", archetypes["archetype"].nunique())
+
+m1.metric(
+    "Projects",
+    rag["project_id"].nunique(),
+)
+
+m2.metric(
+    "PAD / ICR Documents",
+    rag["document_id"].nunique(),
+)
+
+m3.metric(
+    "RAG Chunks",
+    f"{len(rag):,}",
+)
+
+m4.metric(
+    "Project Archetypes",
+    archetypes["archetype"].nunique(),
+)
+
 
 prompt_options = {
     "Resilience Drivers":
-        "Which infrastructure investment characteristics are associated with stronger resilience to disasters and shocks?",
+        "Which infrastructure investment characteristics are associated "
+        "with stronger resilience to disasters and shocks?",
+
     "Top DRM Projects":
-        "Which projects show the strongest DRM and facility resilience profile, and what evidence supports that classification?",
+        "Which projects show the strongest DRM and facility resilience "
+        "profile, and what evidence supports that classification?",
+
     "PAD vs ICR Change":
-        "How do PADs and ICRs differ in their emphasis on resilience, preparedness, hazards, and climate adaptation?",
+        "How do PADs and ICRs differ in their emphasis on resilience, "
+        "preparedness, hazards, and climate adaptation?",
+
     "Compare Archetypes":
-        "What distinguishes the Hazard and Climate Resilience Infrastructure archetype from the General and Mixed Infrastructure archetype?",
+        "What distinguishes the Hazard and Climate Resilience Infrastructure "
+        "archetype from the General and Mixed Infrastructure archetype?",
+
     "Integrated Resilience":
-        "Which projects combine physical infrastructure with climate adaptation, hazard-specific design, and supporting utility systems?",
+        "Which projects combine physical infrastructure with climate "
+        "adaptation, hazard-specific design, and supporting utility systems?",
+
     "Investigate Specialized Subgroup":
-        "Why are P166783 and P173800 classified as Resilience and Preparedness Intensive, and is the signal stronger in the PAD or ICR?",
+        "Why are P166783 and P173800 classified as Resilience and "
+        "Preparedness Intensive, and is the signal stronger in the PAD or ICR?",
+
     "Project Evolution":
-        "Which projects appear to have broadened or shifted their resilience focus between appraisal and completion?",
+        "Which projects appear to have broadened or shifted their resilience "
+        "focus between appraisal and completion?",
+
     "Lifelines and Utilities":
-        "What evidence suggests that utilities such as power, water, sanitation, or drainage contribute to health facility resilience?",
+        "What evidence suggests that utilities such as power, water, "
+        "sanitation, or drainage contribute to health facility resilience?",
 }
+
 
 selected_prompt = st.selectbox(
     "Pre-configured query",
-    ["Custom question"] + list(prompt_options.keys()),
+    ["Custom question"]
+    + list(prompt_options.keys()),
 )
+
 
 query = st.text_area(
     "Ask the portfolio",
@@ -513,19 +622,38 @@ query = st.text_area(
         else ""
     ),
     height=100,
-    placeholder="Ask a question about the matched PAD/ICR portfolio...",
+    placeholder=(
+        "Ask a question about the matched "
+        "PAD/ICR portfolio..."
+    ),
 )
 
-run = st.button("Run query", type="primary")
+
+run = st.button(
+    "Run query",
+    type="primary",
+)
 
 
-with st.expander("Project archetype overview", expanded=False):
+with st.expander(
+    "Project archetype overview",
+    expanded=False,
+):
+
     overview = (
-        archetypes.groupby(["cluster", "archetype"])
+        archetypes
+        .groupby(
+            ["cluster", "archetype"]
+        )
         .size()
-        .reset_index(name="projects")
-        .sort_values("cluster")
+        .reset_index(
+            name="projects"
+        )
+        .sort_values(
+            "cluster"
+        )
     )
+
     st.dataframe(
         overview,
         use_container_width=True,
@@ -534,8 +662,12 @@ with st.expander("Project archetype overview", expanded=False):
 
 
 if run:
+
     if not query.strip():
-        st.warning("Enter a question or select a pre-configured prompt.")
+        st.warning(
+            "Enter a question or select "
+            "a pre-configured prompt."
+        )
         st.stop()
 
     filtered = filter_corpus(
@@ -548,7 +680,9 @@ if run:
     )
 
     if filtered.empty:
-        st.warning("No chunks match the current filters.")
+        st.warning(
+            "No chunks match the current filters."
+        )
         st.stop()
 
     results = retrieve_chunks(
@@ -557,46 +691,97 @@ if run:
         top_k=top_k,
     )
 
-    st.markdown("### Retrieved Evidence")
+    st.markdown(
+        "### Retrieved Evidence"
+    )
 
-    if results["retrieval_score"].max() <= 0:
+    if (
+        results["retrieval_score"].max()
+        <= 0
+    ):
         st.info(
-            "The lexical retriever found no strong term overlap. "
-            "Broaden the filters or rephrase the question."
+            "The lexical retriever found "
+            "no strong term overlap. "
+            "Broaden the filters or "
+            "rephrase the question."
         )
 
     for _, row in results.iterrows():
-        page = "" if pd.isna(row.get("page_number")) else row.get("page_number")
-        section = "" if pd.isna(row.get("section_label")) else row.get("section_label")
-        heading = "" if pd.isna(row.get("heading_text")) else row.get("heading_text")
+
+        page = (
+            ""
+            if pd.isna(
+                row.get("page_number")
+            )
+            else row.get("page_number")
+        )
+
+        section = (
+            ""
+            if pd.isna(
+                row.get("section_label")
+            )
+            else row.get("section_label")
+        )
+
+        heading = (
+            ""
+            if pd.isna(
+                row.get("heading_text")
+            )
+            else row.get("heading_text")
+        )
 
         st.markdown(
             f"""
             <div class="evidence-card">
                 <div class="muted">
-                    <b>{row['project_id']}</b> · {row['doc_type']} ·
-                    Page {page} · {section}
+                    <b>{row['project_id']}</b>
+                    · {row['doc_type']}
+                    · Page {page}
+                    · {section}
                 </div>
-                <div style="margin-top:6px;"><b>{heading}</b></div>
-                <div style="margin-top:8px;">{row['text_clean']}</div>
-                <div class="muted" style="margin-top:8px;">
-                    Retrieval score: {row['retrieval_score']:.3f}
+
+                <div style="margin-top:6px;">
+                    <b>{heading}</b>
+                </div>
+
+                <div style="margin-top:8px;">
+                    {row['text_clean']}
+                </div>
+
+                <div
+                    class="muted"
+                    style="margin-top:8px;"
+                >
+                    Retrieval score:
+                    {row['retrieval_score']:.3f}
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    st.markdown("### Synthesized Answer")
+    st.markdown(
+        "### Synthesized Answer"
+    )
 
     if not api_key:
+
         st.info(
-            "Enter an Anthropic API key in the sidebar to generate "
-            "a Claude synthesis. Evidence retrieval works without an API key."
+            "Enter an Anthropic API key in the sidebar "
+            "to generate a Claude synthesis. "
+            "Evidence retrieval works without an API key."
         )
+
     else:
+
         try:
-            with st.spinner("Generating grounded synthesis..."):
+
+            with st.spinner(
+                "Generating grounded synthesis..."
+            ):
+
                 answer = ask_anthropic(
                     api_key=api_key,
                     model=model,
@@ -604,14 +789,22 @@ if run:
                     results=results,
                     archetypes=archetypes,
                 )
-            st.markdown(answer)
+
+            st.markdown(
+                answer
+            )
+
         except Exception as exc:
-            st.error(f"Anthropic request failed: {exc}")
+
+            st.error(
+                f"Anthropic request failed: {exc}"
+            )
 
 
 st.divider()
+
 st.caption(
-    "Retrieval currently uses TF-IDF over cleaned chunk text because the "
-    "original model used to create the stored 768-dimensional embeddings "
-    "has not yet been identified."
+    "Retrieval currently uses TF-IDF over cleaned chunk text "
+    "because the original model used to create the stored "
+    "768-dimensional embeddings has not yet been identified."
 )
