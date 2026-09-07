@@ -425,33 +425,21 @@ if run:
             "Projects not represented here still exist in the underlying corpus; they were not surfaced by this retrieval result."
         )
 
-    st.markdown("### Retrieved Evidence")
+    # --------------------------------------------------------
+    # Answer first
+    # --------------------------------------------------------
+
+    st.markdown("### Answer")
+
     if results.empty:
         st.warning("No evidence was retrieved.")
         st.stop()
 
-    if results["retrieval_score"].max() <= 0:
-        st.info("The lexical retriever found no strong term overlap. Broaden the filters or rephrase the question.")
-
-    for _, row in results.iterrows():
-        page = "" if pd.isna(row.get("page_number")) else row.get("page_number")
-        section = "" if pd.isna(row.get("section_label")) else row.get("section_label")
-        heading = "" if pd.isna(row.get("heading_text")) else row.get("heading_text")
-        st.markdown(
-            f"""
-            <div class="evidence-card">
-                <div class="muted"><b>{row['project_id']}</b> · {row['doc_type']} · Page {page} · {section}</div>
-                <div style="margin-top:6px;"><b>{heading}</b></div>
-                <div style="margin-top:8px;">{row['text_clean']}</div>
-                <div class="muted" style="margin-top:8px;">Retrieval score: {row['retrieval_score']:.3f}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    st.markdown("### Synthesized Answer")
     if not api_key:
-        st.info("Enter an Anthropic API key in the sidebar to generate a Claude synthesis. Evidence retrieval works without an API key.")
+        st.info(
+            "Enter an Anthropic API key in the sidebar to generate a grounded answer. "
+            "Retrieved evidence is available below."
+        )
     else:
         try:
             with st.spinner("Generating grounded synthesis..."):
@@ -466,6 +454,36 @@ if run:
             st.markdown(answer)
         except Exception as exc:
             st.error(f"Anthropic request failed: {exc}")
+
+    # --------------------------------------------------------
+    # Supporting evidence second
+    # --------------------------------------------------------
+
+    with st.expander(
+        f"Supporting Evidence ({len(results)} passages)",
+        expanded=False,
+    ):
+        if results["retrieval_score"].max() <= 0:
+            st.info(
+                "The lexical retriever found no strong term overlap. "
+                "Broaden the filters or rephrase the question."
+            )
+
+        for _, row in results.iterrows():
+            page = "" if pd.isna(row.get("page_number")) else row.get("page_number")
+            section = "" if pd.isna(row.get("section_label")) else row.get("section_label")
+            heading = "" if pd.isna(row.get("heading_text")) else row.get("heading_text")
+            st.markdown(
+                f"""
+                <div class="evidence-card">
+                    <div class="muted"><b>{row['project_id']}</b> · {row['doc_type']} · Page {page} · {section}</div>
+                    <div style="margin-top:6px;"><b>{heading}</b></div>
+                    <div style="margin-top:8px;">{row['text_clean']}</div>
+                    <div class="muted" style="margin-top:8px;">Retrieval score: {row['retrieval_score']:.3f}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
 st.divider()
 st.caption(
